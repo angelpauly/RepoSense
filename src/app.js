@@ -1,8 +1,11 @@
 import express from "express";
+import repoRoutes from "./routes/repoRoutes.js";
 
 const app = express();
 
 app.use(express.json());
+
+app.use("/api", repoRoutes);
 
 app.get("/", (req, res) => {
     res.send("RepoSense Running");
