@@ -4,6 +4,9 @@ import {
   readRepositoryFiles,
   extractCodeFiles
 } from "../services/fileService.js";
+import {
+    chunkCodeFiles
+} from "../services/chunkService.js";
 
 const router = express.Router();
 
@@ -21,14 +24,16 @@ router.post("/analyze-repo", async (req, res) => {
         const result = await cloneRepository(repoUrl);
         const files = await readRepositoryFiles(result.localPath);
         const codeFiles = await extractCodeFiles(files);
+        const chunks = chunkCodeFiles(codeFiles);
 
-        res.json({
+       res.json({
             success: true,
-            epository: result,
+            repository: result,
             totalFiles: files.length,
             codeFilesFound: codeFiles.length,
-            sample: codeFiles.slice(0, 3)
-});
+            totalChunks: chunks.length,
+            sampleChunk: chunks[0]
+        });
 
     } catch (error) {
 
