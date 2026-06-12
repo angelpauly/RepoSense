@@ -7,6 +7,7 @@ import {
 import {
     chunkCodeFiles
 } from "../services/chunkService.js";
+import {generateEmbedding} from "../services/embeddingService.js";
 
 const router = express.Router();
 
@@ -43,6 +44,19 @@ router.post("/analyze-repo", async (req, res) => {
         });
 
     }
+});
+router.get("/test-embedding", async (req, res) => {
+
+    const vector =
+        await generateEmbedding(
+            "user authentication login"
+        );
+
+    res.json({
+        vectorLength: vector.length,
+        sample: vector.slice(0, 10)
+    });
+
 });
 
 export default router;
