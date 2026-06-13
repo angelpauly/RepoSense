@@ -13,6 +13,14 @@ import {
 import {
     createChunkVectors
 } from "../services/vectorService.js";
+import {
+    saveVectors,
+    getVectors
+} from "../store/vectorStore.js";
+
+import {
+    searchSimilarChunks
+} from "../services/searchService.js";
 
 const router = express.Router();
 
@@ -50,6 +58,7 @@ router.post("/analyze-repo", async (req, res) => {
             await createChunkVectors(
                 sampleChunks
             );
+        saveVectors(vectors);
 
         res.json({
             success: true,
@@ -86,6 +95,64 @@ router.get("/test-embedding", async (req, res) => {
             vectorLength: vector.length,
             sample: vector.slice(0, 10)
         });
+
+    } catch (error) {
+
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+
+    }
+
+});
+router.post("/search", async (req, res) => {
+
+    try {
+
+        const { query } = req.body;
+
+        if (!query) {
+
+            return res.status(400).json({
+                error: "Query is required"
+            });
+
+        }
+
+        const vectors =
+            getVectors();
+
+        if (vectors.length === 0) {
+
+            return res.status(400).json({
+                error:
+                "No repository analyzed yet"
+            });
+
+        }
+
+        const queryEmbedding =
+            await generateEmbedding(query);
+
+        const results =
+            searchSimilarChunks(
+                queryEmbedding,
+                vectors,
+                3
+            );
+
+        const formattedResults = results.map(result => ({
+    filePath: result.filePath,
+    chunkIndex: result.chunkIndex,
+    score: result.score,
+     content: result.content.substring(0, 500)
+}));
+
+res.json({
+    query,
+    results: formattedResults
+});
 
     } catch (error) {
 
