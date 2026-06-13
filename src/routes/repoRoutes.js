@@ -167,5 +167,85 @@ res.json({
     }
 
 });
+router.post("/ask-repo", async (req, res) => {
+
+    try {
+
+        const { question } = req.body;
+
+        if (!question) {
+
+            return res.status(400).json({
+                error: "Question is required"
+            });
+
+        }
+
+        const vectors =
+            getVectors();
+
+        if (vectors.length === 0) {
+
+            return res.status(400).json({
+                error:
+                "Analyze a repository first"
+            });
+
+        }
+
+        const queryEmbedding =
+            await generateEmbedding(
+                question
+            );
+
+        const relevantChunks =
+            searchSimilarChunks(
+                queryEmbedding,
+                vectors,
+                5
+            );
+
+        const context =
+            buildContext(
+                relevantChunks
+            );
+
+        const prompt = `
+You are a senior software engineer.
+
+Answer the question using ONLY
+the provided repository context.
+
+Repository Context:
+
+${context}
+
+Question:
+
+${question}
+
+Answer:
+`;
+
+        const answer =
+            await generateAnswer(
+                prompt
+            );
+
+        res.json({
+            question,
+            answer
+        });
+
+    } catch (error) {
+
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+
+    }
+
+});
 
 export default router;
