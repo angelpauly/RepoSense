@@ -7,8 +7,13 @@ console.log(
 );
 import express from "express";
 import repoRoutes from "./routes/repoRoutes.js";
+import testRoute from "./routes/testRoute.js";
+
+
 
 const app = express();
+
+app.use("/api", testRoute);
 
 app.use(express.json());
 
