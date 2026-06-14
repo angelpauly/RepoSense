@@ -11,11 +11,27 @@ router.get("/test-chroma", async (req, res) => {
         ssl: false
     });
 
-    const heartbeat = await client.heartbeat();
+    const collections =
+        await client.listCollections();
 
     res.json({
         success: true,
-        heartbeat
+        collections
+    });
+
+});
+
+router.get("/test-chroma-write", async (req, res) => {
+
+    const collection = await getCollection();
+
+    await collection.add({
+        ids: ["test1"],
+        documents: ["Hello ChromaDB"]
+    });
+
+    res.json({
+        success: true
     });
 
 });
