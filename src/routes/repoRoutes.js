@@ -25,6 +25,7 @@ import { generateAnswer } from "../services/llmService.js";
 
 import { buildContext } from "../services/ragService.js";
 
+
 const router = express.Router();
 
 router.post("/analyze-repo", async (req, res) => {
@@ -231,11 +232,16 @@ Answer:
             await generateAnswer(
                 prompt
             );
-
-        res.json({
-            question,
-            answer
-        });
+            res.json({
+    question,
+    answer,
+    retrievedChunks: relevantChunks.map(chunk => ({
+        filePath: chunk.filePath,
+        chunkIndex: chunk.chunkIndex,
+        score: chunk.score
+    }))
+});
+       
 
     } catch (error) {
 
@@ -246,6 +252,28 @@ Answer:
 
     }
 
+});
+router.get("/test-gemini", async (req, res) => {
+    try {
+
+        const answer = await generateAnswer(
+            "What is Express.js?"
+        );
+
+        res.json({
+            success: true,
+            answer
+        });
+
+    } catch (error) {
+
+        res.json({
+            success: false,
+            error: error.message,
+            stack: error.stack
+        });
+
+    }
 });
 
 export default router;
