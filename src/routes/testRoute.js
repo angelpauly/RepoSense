@@ -21,19 +21,6 @@ router.get("/test-chroma", async (req, res) => {
 
 });
 
-router.get("/test-chroma-write", async (req, res) => {
 
-    const collection = await getCollection();
-
-    await collection.add({
-        ids: ["test1"],
-        documents: ["Hello ChromaDB"]
-    });
-
-    res.json({
-        success: true
-    });
-
-});
 
 export default router;
