@@ -11,9 +11,11 @@ export function chunkText(text, chunkSize = 1000) {
         chunks.push(
             text.slice(i, i + chunkSize)
         );
+
     }
 
     return chunks;
+
 }
 
 export function chunkCodeFiles(codeFiles) {
@@ -22,14 +24,21 @@ export function chunkCodeFiles(codeFiles) {
 
     for (const file of codeFiles) {
 
-        const chunks = chunkText(file.content);
+        const chunks =
+            chunkText(file.content);
 
         chunks.forEach((chunk, index) => {
 
             allChunks.push({
+
+                id: `${file.path}-${index}`,
+
                 filePath: file.path,
+
                 chunkIndex: index,
+
                 content: chunk
+
             });
 
         });
@@ -37,4 +46,5 @@ export function chunkCodeFiles(codeFiles) {
     }
 
     return allChunks;
+
 }

@@ -7,9 +7,12 @@ const client = new ChromaClient({
 });
 
 async function getCollection() {
+
     return await client.getOrCreateCollection({
-        name: "reposense"
+        name: "reposense",
+        embeddingFunction: null
     });
+
 }
 
 export async function storeChunks(chunks) {
@@ -17,13 +20,18 @@ export async function storeChunks(chunks) {
     const collection = await getCollection();
 
     await collection.add({
+
         ids: chunks.map(chunk => chunk.id),
+
         embeddings: chunks.map(chunk => chunk.embedding),
+
         documents: chunks.map(chunk => chunk.content),
+
         metadatas: chunks.map(chunk => ({
             filePath: chunk.filePath,
             chunkIndex: chunk.chunkIndex
         }))
+
     });
 
 }
@@ -33,9 +41,19 @@ export async function searchChunks(queryEmbedding, topK = 5) {
     const collection = await getCollection();
 
     const results = await collection.query({
+
         queryEmbeddings: [queryEmbedding],
-        nResults: topK
+
+        nResults: topK,
+
+        include: [
+            "documents",
+            "metadatas",
+            "distances"
+        ]
+
     });
 
     return results;
+
 }

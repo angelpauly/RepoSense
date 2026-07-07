@@ -13,18 +13,13 @@ import {
 import {
     createChunkVectors
 } from "../services/vectorService.js";
-import {
-    saveVectors,
-    getVectors
-} from "../store/vectorStore.js";
 
 import {
-    searchSimilarChunks
-} from "../services/searchService.js";
+    storeChunks,
+    searchChunks
+} from "../services/chromaService.js";
+
 import { generateAnswer } from "../services/llmService.js";
-
-import { buildContext } from "../services/ragService.js";
-
 
 const router = express.Router();
 
@@ -54,15 +49,12 @@ router.post("/analyze-repo", async (req, res) => {
         const chunks =
             chunkCodeFiles(codeFiles);
 
-        // Process only first 10 chunks for now
-        const sampleChunks =
-            chunks.slice(0, 10);
-
         const vectors =
             await createChunkVectors(
-                sampleChunks
+            chunks
             );
-        saveVectors(vectors);
+
+        await storeChunks(vectors);
 
         res.json({
             success: true,
@@ -70,7 +62,7 @@ router.post("/analyze-repo", async (req, res) => {
             totalFiles: files.length,
             codeFilesFound: codeFiles.length,
             totalChunks: chunks.length,
-            vectorsCreated: vectors.length,
+            vectorsStored: vectors.length,
             firstVectorLength:
                 vectors[0].embedding.length
         });
@@ -110,6 +102,7 @@ router.get("/test-embedding", async (req, res) => {
     }
 
 });
+
 router.post("/search", async (req, res) => {
 
     try {
@@ -124,39 +117,37 @@ router.post("/search", async (req, res) => {
 
         }
 
-        const vectors =
-            getVectors();
-
-        if (vectors.length === 0) {
-
-            return res.status(400).json({
-                error:
-                "No repository analyzed yet"
-            });
-
-        }
-
         const queryEmbedding =
             await generateEmbedding(query);
 
         const results =
-            searchSimilarChunks(
+            await searchChunks(
                 queryEmbedding,
-                vectors,
-                3
+                5
             );
 
-        const formattedResults = results.map(result => ({
-    filePath: result.filePath,
-    chunkIndex: result.chunkIndex,
-    score: result.score,
-     content: result.content.substring(0, 500)
-}));
+        const formattedResults =
+            results.documents[0].map((doc, index) => ({
 
-res.json({
-    query,
-    results: formattedResults
-});
+                content: doc,
+
+                filePath:
+                    results.metadatas[0][index].filePath,
+
+                chunkIndex:
+                    results.metadatas[0][index].chunkIndex,
+
+                score:
+                    results.distances
+                        ? results.distances[0][index]
+                        : null
+
+            }));
+
+        res.json({
+            query,
+            results: formattedResults
+        });
 
     } catch (error) {
 
@@ -168,6 +159,7 @@ res.json({
     }
 
 });
+
 router.post("/ask-repo", async (req, res) => {
 
     try {
@@ -182,34 +174,19 @@ router.post("/ask-repo", async (req, res) => {
 
         }
 
-        const vectors =
-            getVectors();
-
-        if (vectors.length === 0) {
-
-            return res.status(400).json({
-                error:
-                "Analyze a repository first"
-            });
-
-        }
-
         const queryEmbedding =
             await generateEmbedding(
                 question
             );
 
         const relevantChunks =
-            searchSimilarChunks(
+            await searchChunks(
                 queryEmbedding,
-                vectors,
                 5
             );
 
         const context =
-            buildContext(
-                relevantChunks
-            );
+            relevantChunks.documents[0].join("\n\n");
 
         const prompt = `
 You are a senior software engineer.
@@ -232,16 +209,17 @@ Answer:
             await generateAnswer(
                 prompt
             );
-            res.json({
-    question,
-    answer,
-    retrievedChunks: relevantChunks.map(chunk => ({
-        filePath: chunk.filePath,
-        chunkIndex: chunk.chunkIndex,
-        score: chunk.score
-    }))
-});
-       
+
+        res.json({
+
+            question,
+
+            answer,
+
+            retrievedChunks:
+                relevantChunks.metadatas[0]
+
+        });
 
     } catch (error) {
 
@@ -253,12 +231,15 @@ Answer:
     }
 
 });
+
 router.get("/test-gemini", async (req, res) => {
+
     try {
 
-        const answer = await generateAnswer(
-            "What is Express.js?"
-        );
+        const answer =
+            await generateAnswer(
+                "What is Express.js?"
+            );
 
         res.json({
             success: true,
@@ -274,6 +255,7 @@ router.get("/test-gemini", async (req, res) => {
         });
 
     }
+
 });
 
 export default router;
