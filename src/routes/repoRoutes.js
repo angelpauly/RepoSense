@@ -1,15 +1,20 @@
 import express from "express";
+
 import { cloneRepository } from "../services/githubService.js";
+
 import {
     readRepositoryFiles,
     extractCodeFiles
 } from "../services/fileService.js";
+
 import {
     chunkCodeFiles
 } from "../services/chunkService.js";
+
 import {
     generateEmbedding
 } from "../services/embeddingService.js";
+
 import {
     createChunkVectors
 } from "../services/vectorService.js";
@@ -19,9 +24,16 @@ import {
     searchChunks
 } from "../services/chromaService.js";
 
-import { generateAnswer } from "../services/llmService.js";
+import {
+    generateAnswer
+} from "../services/llmService.js";
 
 const router = express.Router();
+
+
+// ============================
+// ANALYZE REPOSITORY
+// ============================
 
 router.post("/analyze-repo", async (req, res) => {
 
@@ -30,9 +42,11 @@ router.post("/analyze-repo", async (req, res) => {
         const { repoUrl } = req.body;
 
         if (!repoUrl) {
+
             return res.status(400).json({
                 error: "Repository URL is required"
             });
+
         }
 
         const result =
@@ -49,34 +63,60 @@ router.post("/analyze-repo", async (req, res) => {
         const chunks =
             chunkCodeFiles(codeFiles);
 
+        // Development mode
+        // Later remove slice()
+
+        const sampleChunks =
+            chunks.slice(0, 50);
+
         const vectors =
             await createChunkVectors(
-            chunks
+                sampleChunks
             );
 
         await storeChunks(vectors);
 
         res.json({
+
             success: true,
+
             repository: result,
-            totalFiles: files.length,
-            codeFilesFound: codeFiles.length,
-            totalChunks: chunks.length,
-            vectorsStored: vectors.length,
+
+            totalFiles:
+                files.length,
+
+            codeFilesFound:
+                codeFiles.length,
+
+            totalChunks:
+                chunks.length,
+
+            vectorsStored:
+                vectors.length,
+
             firstVectorLength:
-                vectors[0].embedding.length
+                vectors[0]?.embedding?.length
+
         });
 
     } catch (error) {
 
         res.status(500).json({
+
             success: false,
+
             error: error.message
+
         });
 
     }
 
 });
+
+
+// ============================
+// TEST EMBEDDING
+// ============================
 
 router.get("/test-embedding", async (req, res) => {
 
@@ -88,20 +128,33 @@ router.get("/test-embedding", async (req, res) => {
             );
 
         res.json({
-            vectorLength: vector.length,
-            sample: vector.slice(0, 10)
+
+            vectorLength:
+                vector.length,
+
+            sample:
+                vector.slice(0, 10)
+
         });
 
     } catch (error) {
 
         res.status(500).json({
+
             success: false,
+
             error: error.message
+
         });
 
     }
 
 });
+
+
+// ============================
+// SEARCH
+// ============================
 
 router.post("/search", async (req, res) => {
 
@@ -118,7 +171,9 @@ router.post("/search", async (req, res) => {
         }
 
         const queryEmbedding =
-            await generateEmbedding(query);
+            await generateEmbedding(
+                query
+            );
 
         const results =
             await searchChunks(
@@ -127,38 +182,55 @@ router.post("/search", async (req, res) => {
             );
 
         const formattedResults =
-            results.documents[0].map((doc, index) => ({
+            results.documents[0].map(
+                (doc, index) => ({
 
-                content: doc,
+                    content:
+                        doc.substring(0, 500),
 
-                filePath:
-                    results.metadatas[0][index].filePath,
+                    filePath:
+                        results.metadatas[0][index]
+                            .filePath,
 
-                chunkIndex:
-                    results.metadatas[0][index].chunkIndex,
+                    chunkIndex:
+                        results.metadatas[0][index]
+                            .chunkIndex,
 
-                score:
-                    results.distances
-                        ? results.distances[0][index]
-                        : null
+                    score:
+                        results.distances
+                            ? results.distances[0][index]
+                            : null
 
-            }));
+                })
+            );
 
         res.json({
+
             query,
-            results: formattedResults
+
+            results:
+                formattedResults
+
         });
 
     } catch (error) {
 
         res.status(500).json({
+
             success: false,
+
             error: error.message
+
         });
 
     }
 
 });
+
+
+// ============================
+// ASK REPOSITORY
+// ============================
 
 router.post("/ask-repo", async (req, res) => {
 
@@ -186,13 +258,16 @@ router.post("/ask-repo", async (req, res) => {
             );
 
         const context =
-            relevantChunks.documents[0].join("\n\n");
+            relevantChunks.documents[0]
+                .join("\n\n");
 
         const prompt = `
 You are a senior software engineer.
 
-Answer the question using ONLY
-the provided repository context.
+Answer ONLY from the repository context.
+
+If the repository context does not contain enough information,
+say "The repository does not contain enough information to answer this."
 
 Repository Context:
 
@@ -224,13 +299,21 @@ Answer:
     } catch (error) {
 
         res.status(500).json({
+
             success: false,
+
             error: error.message
+
         });
 
     }
 
 });
+
+
+// ============================
+// TEST GEMINI
+// ============================
 
 router.get("/test-gemini", async (req, res) => {
 
@@ -242,16 +325,21 @@ router.get("/test-gemini", async (req, res) => {
             );
 
         res.json({
+
             success: true,
+
             answer
+
         });
 
     } catch (error) {
 
-        res.json({
+        res.status(500).json({
+
             success: false,
-            error: error.message,
-            stack: error.stack
+
+            error: error.message
+
         });
 
     }
