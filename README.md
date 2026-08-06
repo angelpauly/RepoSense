@@ -62,6 +62,10 @@ Instead of manually searching through hundreds of files, RepoSense retrieves the
 
 # 🧠 Technologies Used
 
+### Frontend
+
+- React
+
 ### Backend
 
 - Node.js
